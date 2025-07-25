@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
@@ -22,7 +23,12 @@ export class BooksController {
   }
 
   @Get()
-  findAll() {
+  findAll(
+    @Query('authorId', new ParseIntPipe({ optional: true })) authorId?: number,
+  ) {
+    if (authorId) {
+      return this.booksService.findByAuthor(authorId);
+    }
     return this.booksService.findAll();
   }
 
@@ -43,8 +49,8 @@ export class BooksController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.booksService.remove(id);
   }
-  @Get('author/:authorId')
-  findByAuthor(@Param('authorId', ParseIntPipe) authorId: number) {
-    return this.booksService.findByAuthor(authorId);
-  }
+  //   @Get('author/:authorId')
+  //   findByAuthor(@Param('authorId', ParseIntPipe) authorId: number) {
+  //     return this.booksService.findByAuthor(authorId);
+  //   }
 }
