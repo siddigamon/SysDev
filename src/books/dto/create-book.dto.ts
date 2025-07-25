@@ -4,6 +4,7 @@ import {
   IsInt,
   IsDateString,
   IsOptional,
+  IsArray,
 } from 'class-validator';
 
 export class CreateBookDto {
@@ -13,6 +14,15 @@ export class CreateBookDto {
 
   @IsInt()
   authorId: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  genreIds?: number[];
+
+  @IsInt()
+  @IsOptional()
+  locationId?: number;
 
   @IsDateString()
   publishedAt: string;

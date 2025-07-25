@@ -21,11 +21,30 @@ model Author {
   books     Book[]
 }
 
+model Genre {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  bookGenres  BookGenre[] // Many-to-Many through junction table
+}
+
+model Location {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  floor       Int?
+  section     String?
+  description String?
+  books       Book[]  // One-to-Many (location can have many books)
+}
+
 model Book {
   id           Int      @id @default(autoincrement())
   title        String
   authorId     Int
   author       Author   @relation(fields: [authorId], references: [id])
+  locationId   Int?
+  location     Location?   @relation(fields: [locationId], references: [id])
+    bookGenres   BookGenre[]
   publishedAt  DateTime // Original publication date
   reprintDate  DateTime? // When this specific copy was reprinted
   edition      String?   // "1st", "2nd", "Special Edition"
@@ -34,4 +53,14 @@ model Book {
   pageCount    Int?
   
   @@unique([title, authorId, edition, publisher])
+}
+
+model BookGenre {
+  id      Int   @id @default(autoincrement())
+  bookId  Int
+  genreId Int
+  book    Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  
+  @@unique([bookId, genreId]) 
 }

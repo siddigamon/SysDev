@@ -8,25 +8,54 @@ export class BooksService {
   constructor(private prisma: PrismaService) {}
 
   async create(createBookDto: CreateBookDto) {
+    const { genreIds, ...bookData } = createBookDto;
+
     return this.prisma.book.create({
       data: {
-        ...createBookDto,
+        ...bookData,
         publishedAt: new Date(createBookDto.publishedAt),
+        reprintDate: createBookDto.reprintDate
+          ? new Date(createBookDto.reprintDate)
+          : undefined,
+        // Create the many-to-many relationships for genres
+        bookGenres: genreIds
+          ? {
+              create: genreIds.map((genreId) => ({ genreId })),
+            }
+          : undefined,
       },
-      include: { author: true },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
     });
   }
 
   async findAll() {
     return this.prisma.book.findMany({
-      include: { author: true },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
     });
   }
 
   async findOne(id: number) {
     const book = await this.prisma.book.findUnique({
       where: { id },
-      include: { author: true },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
     });
 
     if (!book) {
@@ -47,29 +76,125 @@ export class BooksService {
 
     return this.prisma.book.findMany({
       where: { authorId: authorId },
-      include: { author: true },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
       orderBy: { publishedAt: 'asc' },
+    });
+  }
+
+  // NEW: Find books by genre
+  async findByGenre(genreId: number) {
+    await this.prisma.genre.findUniqueOrThrow({
+      where: { id: genreId },
+    });
+
+    return this.prisma.book.findMany({
+      where: {
+        bookGenres: {
+          some: { genreId: genreId },
+        },
+      },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
+      orderBy: { title: 'asc' },
+    });
+  }
+
+  // NEW: Find books by location
+  async findByLocation(locationId: number) {
+    await this.prisma.location.findUniqueOrThrow({
+      where: { id: locationId },
+    });
+
+    return this.prisma.book.findMany({
+      where: { locationId: locationId },
+      include: {
+        author: true,
+        location: true,
+        bookGenres: {
+          include: { genre: true },
+        },
+      },
+      orderBy: { title: 'asc' },
     });
   }
 
   async update(id: number, updateBookDto: UpdateBookDto) {
     await this.findOne(id);
 
-    return this.prisma.book.update({
-      where: { id },
-      data: {
-        ...updateBookDto,
-        publishedAt: updateBookDto.publishedAt
-          ? new Date(updateBookDto.publishedAt)
-          : undefined,
-      },
-      include: { author: true },
-    });
+    const { genreIds, ...bookData } = updateBookDto;
+
+    // If genreIds are provided, we need to update the many-to-many relationship
+    if (genreIds !== undefined) {
+      // First, delete existing genre relationships
+      await this.prisma.bookGenre.deleteMany({
+        where: { bookId: id },
+      });
+
+      // Then create new ones
+      return this.prisma.book.update({
+        where: { id },
+        data: {
+          ...bookData,
+          publishedAt: updateBookDto.publishedAt
+            ? new Date(updateBookDto.publishedAt)
+            : undefined,
+          reprintDate: updateBookDto.reprintDate
+            ? new Date(updateBookDto.reprintDate)
+            : undefined,
+          bookGenres:
+            genreIds.length > 0
+              ? {
+                  create: genreIds.map((genreId) => ({ genreId })),
+                }
+              : undefined,
+        },
+        include: {
+          author: true,
+          location: true,
+          bookGenres: {
+            include: { genre: true },
+          },
+        },
+      });
+    } else {
+      // No genre update needed
+      return this.prisma.book.update({
+        where: { id },
+        data: {
+          ...bookData,
+          publishedAt: updateBookDto.publishedAt
+            ? new Date(updateBookDto.publishedAt)
+            : undefined,
+          reprintDate: updateBookDto.reprintDate
+            ? new Date(updateBookDto.reprintDate)
+            : undefined,
+        },
+        include: {
+          author: true,
+          location: true,
+          bookGenres: {
+            include: { genre: true },
+          },
+        },
+      });
+    }
   }
 
   async remove(id: number) {
     await this.findOne(id);
 
+    // Delete the book (BookGenre records will be deleted automatically due to onDelete: Cascade)
     return this.prisma.book.delete({
       where: { id },
     });
