@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsInt, IsDateString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsInt,
+  IsDateString,
+  IsOptional,
+} from 'class-validator';
 
 export class CreateBookDto {
   @IsString()
@@ -10,4 +16,24 @@ export class CreateBookDto {
 
   @IsDateString()
   publishedAt: string;
+
+  @IsDateString()
+  @IsOptional()
+  reprintDate?: string;
+
+  @IsString()
+  @IsOptional()
+  edition?: string;
+
+  @IsString()
+  @IsOptional()
+  publisher?: string;
+
+  @IsString()
+  @IsOptional()
+  isbn?: string;
+
+  @IsInt()
+  @IsOptional()
+  pageCount?: number;
 }

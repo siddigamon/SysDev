@@ -22,9 +22,16 @@ model Author {
 }
 
 model Book {
-  id          Int      @id @default(autoincrement())
-  title       String
-  authorId    Int
-  author      Author   @relation(fields: [authorId], references: [id])
-  publishedAt DateTime
+  id           Int      @id @default(autoincrement())
+  title        String
+  authorId     Int
+  author       Author   @relation(fields: [authorId], references: [id])
+  publishedAt  DateTime // Original publication date
+  reprintDate  DateTime? // When this specific copy was reprinted
+  edition      String?   // "1st", "2nd", "Special Edition"
+  publisher    String?
+  isbn         String?   @unique
+  pageCount    Int?
+  
+  @@unique([title, authorId, edition, publisher])
 }
