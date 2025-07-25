@@ -25,7 +25,7 @@ model Genre {
   id          Int         @id @default(autoincrement())
   name        String      @unique
   description String?
-  bookGenres  BookGenre[] // Many-to-Many through junction table
+  bookGenres  BookGenre[] 
 }
 
 model Location {
@@ -34,7 +34,7 @@ model Location {
   floor       Int?
   section     String?
   description String?
-  books       Book[]  // One-to-Many (location can have many books)
+  books       Book[]  
 }
 
 model Book {
@@ -45,9 +45,9 @@ model Book {
   locationId   Int?
   location     Location?   @relation(fields: [locationId], references: [id])
     bookGenres   BookGenre[]
-  publishedAt  DateTime // Original publication date
-  reprintDate  DateTime? // When this specific copy was reprinted
-  edition      String?   // "1st", "2nd", "Special Edition"
+  publishedAt  DateTime 
+  reprintDate  DateTime? 
+  edition      String?   
   publisher    String?
   isbn         String?   @unique
   pageCount    Int?

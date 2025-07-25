@@ -87,7 +87,6 @@ export class BooksService {
     });
   }
 
-  // NEW: Find books by genre
   async findByGenre(genreId: number) {
     await this.prisma.genre.findUniqueOrThrow({
       where: { id: genreId },
@@ -110,7 +109,6 @@ export class BooksService {
     });
   }
 
-  // NEW: Find books by location
   async findByLocation(locationId: number) {
     await this.prisma.location.findUniqueOrThrow({
       where: { id: locationId },
@@ -168,7 +166,6 @@ export class BooksService {
         },
       });
     } else {
-      // No genre update needed
       return this.prisma.book.update({
         where: { id },
         data: {
