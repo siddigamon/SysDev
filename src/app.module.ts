@@ -8,7 +8,13 @@ import { GenresModule } from './genres/genres.module';
 import { LocationsModule } from './locations/locations.module';
 
 @Module({
-  imports: [PrismaModule, AuthorsModule, BooksModule, GenresModule, LocationsModule],
+  imports: [
+    PrismaModule,
+    AuthorsModule,
+    BooksModule,
+    GenresModule,
+    LocationsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
