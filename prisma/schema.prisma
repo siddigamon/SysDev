@@ -15,7 +15,9 @@ datasource db {
 
 model Author {
   id        Int      @id @default(autoincrement())
-  name      String
+  firstName  String
+  middleName String?
+  lastName   String  
   books     Book[]
 }
 
