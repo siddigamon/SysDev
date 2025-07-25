@@ -25,9 +25,18 @@ export class BooksController {
   @Get()
   findAll(
     @Query('authorId', new ParseIntPipe({ optional: true })) authorId?: number,
+    @Query('genreId', new ParseIntPipe({ optional: true })) genreId?: number,
+    @Query('locationId', new ParseIntPipe({ optional: true }))
+    locationId?: number,
   ) {
     if (authorId) {
       return this.booksService.findByAuthor(authorId);
+    }
+    if (genreId) {
+      return this.booksService.findByGenre(genreId);
+    }
+    if (locationId) {
+      return this.booksService.findByLocation(locationId);
     }
     return this.booksService.findAll();
   }
