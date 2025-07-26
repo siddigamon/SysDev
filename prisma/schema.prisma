@@ -19,6 +19,8 @@ model Author {
   middleName String?
   lastName   String  
   books     Book[]
+
+  @@unique([firstName, lastName])
 }
 
 model Genre {
