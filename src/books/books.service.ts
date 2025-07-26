@@ -6,6 +6,14 @@ import { UpdateBookDto } from './dto/update-book.dto';
 import { ChangeBookStatusDto } from '../common/dto/status.dto';
 import { Book, BookStatus } from '@prisma/client';
 
+interface BookFilters {
+  authorId?: number;
+  genreId?: number;
+  locationId?: number;
+  status?: BookStatus;
+  includeRetired?: boolean;
+}
+
 @Injectable()
 export class BooksService extends BaseService<
   Book,
@@ -327,6 +335,78 @@ export class BooksService extends BaseService<
       'update',
       id,
     );
+  }
+
+  async findAllWithFilters(filters: BookFilters) {
+    return this.executeWithErrorHandling(async () => {
+      // Build dynamic where clause
+      const whereClause: any = {};
+
+      // Add filters only if they exist
+      if (filters.authorId) {
+        whereClause.authorId = filters.authorId;
+      }
+
+      if (filters.genreId) {
+        whereClause.bookGenres = {
+          some: { genreId: filters.genreId },
+        };
+      }
+
+      if (filters.locationId) {
+        whereClause.locationId = filters.locationId;
+      }
+
+      if (filters.status) {
+        whereClause.status = filters.status;
+      } else if (!filters.includeRetired) {
+        whereClause.status = { not: 'RETIRED' };
+      }
+
+      // Validate referenced entities exist (only if provided)
+      if (filters.authorId) {
+        const authorExists = await this.prisma.author.findUnique({
+          where: { id: filters.authorId },
+        });
+        if (!authorExists) {
+          throw new NotFoundException(
+            `Author with ID ${filters.authorId} not found`,
+          );
+        }
+      }
+
+      if (filters.genreId) {
+        const genreExists = await this.prisma.genre.findUnique({
+          where: { id: filters.genreId },
+        });
+        if (!genreExists) {
+          throw new NotFoundException(
+            `Genre with ID ${filters.genreId} not found`,
+          );
+        }
+      }
+
+      if (filters.locationId) {
+        const locationExists = await this.prisma.location.findUnique({
+          where: { id: filters.locationId },
+        });
+        if (!locationExists) {
+          throw new NotFoundException(
+            `Location with ID ${filters.locationId} not found`,
+          );
+        }
+      }
+
+      return this.prisma.book.findMany({
+        where: whereClause,
+        include: {
+          author: true,
+          location: true,
+          bookGenres: { include: { genre: true } },
+        },
+        orderBy: { title: 'asc' },
+      });
+    }, 'find books with filters');
   }
 
   // "Delete" now means retire

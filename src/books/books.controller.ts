@@ -36,27 +36,17 @@ export class BooksController {
     @Query('includeRetired') includeRetired?: string,
     @Query('status') status?: BookStatus,
   ) {
-    const includeRetiredFlag = includeRetired === 'true';
+    // Build filter object - much cleaner!
+    const filters = {
+      authorId,
+      genreId,
+      locationId,
+      status,
+      includeRetired: includeRetired === 'true',
+    };
 
-    // Filter by status
-    if (status) {
-      return this.booksService.findByStatus(status);
-    }
-
-    // Filter by relations
-    if (authorId) {
-      return this.booksService.findByAuthor(authorId, includeRetiredFlag);
-    }
-    if (genreId) {
-      return this.booksService.findByGenre(genreId, includeRetiredFlag);
-    }
-    if (locationId) {
-      return this.booksService.findByLocation(locationId, includeRetiredFlag);
-    }
-
-    return this.booksService.findAll(includeRetiredFlag);
+    return this.booksService.findAllWithFilters(filters);
   }
-
   @Get('available')
   findAvailable() {
     return this.booksService.findAvailable();

@@ -1,98 +1,258 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Library Management API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A practical library management system built with NestJS, Prisma, and PostgreSQL. Handles books, authors, genres, and locations with realistic status tracking.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## What This Does
 
-## Description
+Manages library operations the way they actually work:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Books have statuses (available, checked out, damaged, lost, etc.)
+- Locations can be active or temporarily closed
+- Authors and genres stay simple
+- Nothing gets permanently deleted - books get retired, locations get deactivated
 
-## Project setup
+## Getting Started
+
+**Requirements:**
+
+- Node.js 18+
+- PostgreSQL
+- npm
+
+**Setup:**
 
 ```bash
-$ npm install
+git clone <repository-url>
+cd sysdev-library-api
+npm install
 ```
 
-## Compile and run the project
+**Environment file (.env):**
+
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/library_db"
+PORT=3000
+```
+
+**Database:**
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npx prisma migrate deploy
+npx prisma generate
+npm run db:seed
 ```
 
-## Run tests
+**Run:**
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev
 ```
 
-## Deployment
+API runs at `http://localhost:3000`
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## API Endpoints
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Books
+
+```http
+POST   /books                    # Create book
+GET    /books                    # List books (with filters)
+GET    /books/:id                # Get one book
+PATCH  /books/:id                # Update book info
+DELETE /books/:id                # Retire book
+
+# Status changes
+PATCH  /books/:id/check-out      # Check out
+PATCH  /books/:id/check-in       # Return
+PATCH  /books/:id/mark-lost      # Mark lost
+PATCH  /books/:id/mark-damaged   # Mark damaged
+PATCH  /books/:id/send-to-repair # Send to repair
+PATCH  /books/:id/move-to-storage # Move to storage
+PATCH  /books/:id/status         # Change status directly
+
+# Quick filters
+GET    /books/available          # Available books only
+GET    /books/checked-out        # Checked out books only
+```
+
+### Filtering Books
+
+```http
+GET /books?status=AVAILABLE                    # By status
+GET /books?authorId=1                          # By author
+GET /books?genreId=2                           # By genre
+GET /books?locationId=3                        # By location
+GET /books?includeRetired=true                 # Include retired books
+
+# Combine filters
+GET /books?status=AVAILABLE&locationId=1       # Available in location 1
+GET /books?authorId=3&includeRetired=true      # All books by author 3
+GET /books?genreId=4&status=CHECKED_OUT        # Checked out books in genre 4
+```
+
+### Authors
+
+```http
+POST   /authors          # Create
+GET    /authors          # List all
+GET    /authors/:id      # Get one
+PATCH  /authors/:id      # Update
+DELETE /authors/:id      # Delete (only if no books)
+```
+
+### Genres
+
+```http
+POST   /genres           # Create
+GET    /genres           # List all
+GET    /genres/:id       # Get one
+PATCH  /genres/:id       # Update
+DELETE /genres/:id       # Delete (only if no books)
+```
+
+### Locations
+
+```http
+POST   /locations                    # Create
+GET    /locations                    # List active only
+GET    /locations?includeInactive=true # Include inactive
+GET    /locations?status=ACTIVE      # Filter by status
+GET    /locations/:id                # Get one
+PATCH  /locations/:id                # Update
+PATCH  /locations/:id/deactivate     # Deactivate
+PATCH  /locations/:id/activate       # Activate
+DELETE /locations/:id                # Deactivate
+```
+
+## Example Usage
+
+### Basic Book Operations
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Create a book
+POST /books
+{
+  "title": "1984",
+  "authorId": 1,
+  "genreIds": [1, 2],
+  "locationId": 1,
+  "publishedAt": "1949-06-08",
+  "isbn": "9780140817744"
+}
+
+# Check it out
+PATCH /books/1/check-out
+{
+  "reason": "Borrowed by student"
+}
+
+# Return it
+PATCH /books/1/check-in
+
+# Report damage
+PATCH /books/1/mark-damaged
+{
+  "reason": "Water damage on cover"
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Common Queries
 
-## Resources
+```bash
+# What's available to borrow?
+GET /books/available
 
-Check out a few resources that may come in handy when working with NestJS:
+# What's checked out?
+GET /books/checked-out
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Available books in fiction section
+GET /books?status=AVAILABLE&locationId=1
 
-## Support
+# All Stephen King books (including retired)
+GET /books?authorId=3&includeRetired=true
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Horror books currently checked out
+GET /books?genreId=4&status=CHECKED_OUT
+```
 
-## Stay in touch
+### Database Structure
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Authors can have many books
+- Books belong to one author and one location
+- Books can have multiple genres (many-to-many)
+- Everything uses proper foreign keys
 
-## License
+### Key Features
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Soft deletes**: Books get "retired", locations get "deactivated"
+- **Status tracking**: Every status change includes reason and timestamp
+- **Combined filtering**: Mix and match any query parameters
+- **Validation**: Checks that referenced authors/genres/locations exist
+
+## Sample Data
+
+Run `npm run db:seed` to get:
+
+- 4 authors (Rowling, Orwell, King, Christie)
+- 4 genres (Fantasy, Dystopian, Horror, Mystery)
+- 5 locations (different sections)
+- 8 books with various statuses
+
+## Development Commands
+
+```bash
+npm run start:dev          # Development with hot reload
+npm run build              # Build for production
+npm run db:seed            # Add sample data
+npm run db:reset-seed      # Fresh database with sample data
+npx prisma studio          # Visual database browser
+npm run lint               # Check code style
+```
+
+## API Responses
+
+**Success (creating a book):**
+
+```json
+{
+  "id": 1,
+  "title": "1984",
+  "status": "AVAILABLE",
+  "statusReason": "Available for checkout",
+  "author": {
+    "firstName": "George",
+    "lastName": "Orwell"
+  },
+  "location": {
+    "name": "Fiction Section A"
+  },
+  "bookGenres": [
+    {
+      "genre": {
+        "name": "Dystopian"
+      }
+    }
+  ]
+}
+```
+
+**Error:**
+
+```json
+{
+  "message": "Book with ID 999 not found",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+## Status Codes
+
+- `200` - Success
+- `201` - Created
+- `400` - Bad request (validation failed)
+- `404` - Not found
+- `409` - Conflict (duplicate or can't delete)
+- `500` - Server error
+
+---
