@@ -3,7 +3,8 @@ import { BaseService } from '../common/base.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
-import { Location } from '@prisma/client';
+import { ChangeLocationStatusDto } from '../common/dto/status.dto';
+import { Location, LocationStatus } from '@prisma/client';
 
 @Injectable()
 export class LocationsService extends BaseService<
@@ -22,6 +23,7 @@ export class LocationsService extends BaseService<
           data: createLocationDto,
           include: {
             books: {
+              where: this.getActiveBookFilter(),
               include: { author: true },
             },
           },
@@ -30,17 +32,37 @@ export class LocationsService extends BaseService<
     );
   }
 
-  async findAll() {
+  async findAll(includeInactive = false) {
     return this.executeWithErrorHandling(
       () =>
         this.prisma.location.findMany({
+          where: includeInactive ? {} : this.getActiveLocationFilter(),
           include: {
             books: {
+              where: this.getActiveBookFilter(),
               include: { author: true },
             },
           },
+          orderBy: [{ floor: 'asc' }, { section: 'asc' }, { name: 'asc' }],
         }),
       'retrieve',
+    );
+  }
+
+  async findByStatus(status: LocationStatus) {
+    return this.executeWithErrorHandling(
+      () =>
+        this.prisma.location.findMany({
+          where: { status },
+          include: {
+            books: {
+              where: this.getActiveBookFilter(),
+              include: { author: true },
+            },
+          },
+          orderBy: [{ floor: 'asc' }, { section: 'asc' }, { name: 'asc' }],
+        }),
+      'find by status',
     );
   }
 
@@ -72,6 +94,36 @@ export class LocationsService extends BaseService<
     );
   }
 
+  async changeStatus(id: number, changeStatusDto: ChangeLocationStatusDto) {
+    return this.executeWithErrorHandling(
+      async () => {
+        await this.findOne(id);
+        return this.prisma.location.update({
+          where: { id },
+          data: {
+            status: changeStatusDto.status,
+          },
+          include: {
+            books: {
+              where: this.getActiveBookFilter(),
+              include: { author: true },
+            },
+          },
+        });
+      },
+      'change status',
+      id,
+    );
+  }
+
+  async deactivate(id: number) {
+    return this.changeStatus(id, { status: LocationStatus.INACTIVE });
+  }
+
+  async activate(id: number) {
+    return this.changeStatus(id, { status: LocationStatus.ACTIVE });
+  }
+
   async update(id: number, updateLocationDto: UpdateLocationDto) {
     return this.executeWithErrorHandling(
       async () => {
@@ -81,6 +133,7 @@ export class LocationsService extends BaseService<
           data: updateLocationDto,
           include: {
             books: {
+              where: this.getActiveBookFilter(),
               include: { author: true },
             },
           },
@@ -92,15 +145,6 @@ export class LocationsService extends BaseService<
   }
 
   async remove(id: number) {
-    return this.executeWithErrorHandling(
-      async () => {
-        await this.findOne(id);
-        return this.prisma.location.delete({
-          where: { id },
-        });
-      },
-      'delete',
-      id,
-    );
+    return this.deactivate(id); // Soft delete by deactivating
   }
 }

@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, BookStatus, LocationStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Start seeding...');
 
-  // Create sample authors
+  // Create sample authors (no status fields needed)
   const author1 = await prisma.author.upsert({
     where: { firstName_lastName: { firstName: 'J.K.', lastName: 'Rowling' } },
     update: {},
@@ -45,7 +45,7 @@ async function main() {
     },
   });
 
-  // Create sample genres
+  // Create sample genres (no status fields needed)
   const fantasyGenre = await prisma.genre.upsert({
     where: { name: 'Fantasy' },
     update: {},
@@ -82,7 +82,7 @@ async function main() {
     },
   });
 
-  // Create sample locations
+  // Create sample locations with status management
   const location1 = await prisma.location.upsert({
     where: { name: 'Fiction Section A' },
     update: {},
@@ -91,6 +91,7 @@ async function main() {
       floor: 1,
       section: 'A',
       description: 'Main fiction collection',
+      status: LocationStatus.ACTIVE,
     },
   });
 
@@ -102,6 +103,7 @@ async function main() {
       floor: 2,
       section: 'B',
       description: 'Classic and historical literature',
+      status: LocationStatus.ACTIVE,
     },
   });
 
@@ -113,6 +115,7 @@ async function main() {
       floor: 1,
       section: 'C',
       description: 'Horror and thriller books',
+      status: LocationStatus.ACTIVE,
     },
   });
 
@@ -124,10 +127,24 @@ async function main() {
       floor: 2,
       section: 'D',
       description: 'Mystery and detective novels',
+      status: LocationStatus.ACTIVE,
     },
   });
 
-  // Create sample books
+  // Create an inactive location for testing
+  const storageLocation = await prisma.location.upsert({
+    where: { name: 'Storage Room' },
+    update: {},
+    create: {
+      name: 'Storage Room',
+      floor: 0,
+      section: 'STORAGE',
+      description: 'Books in storage',
+      status: LocationStatus.INACTIVE,
+    },
+  });
+
+  // Create sample books with various statuses
   const book1 = await prisma.book.upsert({
     where: {
       title_authorId_edition_publisher: {
@@ -147,6 +164,9 @@ async function main() {
       publisher: 'Bloomsbury',
       isbn: '9780747532699',
       pageCount: 223,
+      status: BookStatus.AVAILABLE,
+      statusReason: 'Available for checkout',
+      statusDate: new Date(),
     },
   });
 
@@ -169,6 +189,9 @@ async function main() {
       publisher: 'Bloomsbury',
       isbn: '9780747538493',
       pageCount: 251,
+      status: BookStatus.CHECKED_OUT,
+      statusReason: 'Checked out to student',
+      statusDate: new Date(),
     },
   });
 
@@ -191,6 +214,9 @@ async function main() {
       publisher: 'Penguin Books',
       isbn: '9780140817744',
       pageCount: 328,
+      status: BookStatus.AVAILABLE,
+      statusReason: 'Available for checkout',
+      statusDate: new Date(),
     },
   });
 
@@ -213,6 +239,9 @@ async function main() {
       publisher: 'Secker & Warburg',
       isbn: '9780451526342',
       pageCount: 112,
+      status: BookStatus.DAMAGED,
+      statusReason: 'Water damage on cover',
+      statusDate: new Date(),
     },
   });
 
@@ -235,6 +264,9 @@ async function main() {
       publisher: 'Doubleday',
       isbn: '9780385121675',
       pageCount: 447,
+      status: BookStatus.IN_REPAIR,
+      statusReason: 'Binding repair needed',
+      statusDate: new Date(),
     },
   });
 
@@ -257,6 +289,61 @@ async function main() {
       publisher: 'HarperCollins',
       isbn: '9780062693662',
       pageCount: 256,
+      status: BookStatus.STORAGE,
+      statusReason: 'Low circulation, moved to storage',
+      statusDate: new Date(),
+    },
+  });
+
+  // Add a lost book example
+  const book7 = await prisma.book.upsert({
+    where: {
+      title_authorId_edition_publisher: {
+        title: 'It',
+        authorId: author3.id,
+        edition: '1st Edition',
+        publisher: 'Viking',
+      },
+    },
+    update: {},
+    create: {
+      title: 'It',
+      authorId: author3.id,
+      locationId: location3.id,
+      publishedAt: new Date('1986-09-15'),
+      edition: '1st Edition',
+      publisher: 'Viking',
+      isbn: '9780670813025',
+      pageCount: 1138,
+      status: BookStatus.LOST,
+      statusReason: 'Patron reported lost',
+      statusDate: new Date(),
+    },
+  });
+
+  // Add a retired book example
+  const book8 = await prisma.book.upsert({
+    where: {
+      title_authorId_edition_publisher: {
+        title: 'The Poirot Investigations',
+        authorId: author4.id,
+        edition: 'Old Edition',
+        publisher: 'Vintage',
+      },
+    },
+    update: {},
+    create: {
+      title: 'The Poirot Investigations',
+      authorId: author4.id,
+      locationId: null, // No location for retired books
+      publishedAt: new Date('1924-03-01'),
+      edition: 'Old Edition',
+      publisher: 'Vintage',
+      isbn: '9780394716251',
+      pageCount: 180,
+      status: BookStatus.RETIRED,
+      statusReason: 'Old edition replaced with new version',
+      statusDate: new Date(),
     },
   });
 
@@ -319,7 +406,7 @@ async function main() {
     },
   });
 
-  // Stephen King - Horror
+  // Stephen King books - Horror
   await prisma.bookGenre.upsert({
     where: {
       bookId_genreId: {
@@ -334,7 +421,21 @@ async function main() {
     },
   });
 
-  // Agatha Christie - Mystery
+  await prisma.bookGenre.upsert({
+    where: {
+      bookId_genreId: {
+        bookId: book7.id,
+        genreId: horrorGenre.id,
+      },
+    },
+    update: {},
+    create: {
+      bookId: book7.id,
+      genreId: horrorGenre.id,
+    },
+  });
+
+  // Agatha Christie books - Mystery
   await prisma.bookGenre.upsert({
     where: {
       bookId_genreId: {
@@ -349,6 +450,20 @@ async function main() {
     },
   });
 
+  await prisma.bookGenre.upsert({
+    where: {
+      bookId_genreId: {
+        bookId: book8.id,
+        genreId: mysteryGenre.id,
+      },
+    },
+    update: {},
+    create: {
+      bookId: book8.id,
+      genreId: mysteryGenre.id,
+    },
+  });
+
   console.log('Seeding finished.');
   console.log(`Created ${await prisma.author.count()} authors`);
   console.log(`Created ${await prisma.genre.count()} genres`);
@@ -357,6 +472,31 @@ async function main() {
   console.log(
     `Created ${await prisma.bookGenre.count()} book-genre relationships`,
   );
+
+  // Display status summary
+  console.log('\n--- Book Status Summary ---');
+  const statusCounts = await prisma.book.groupBy({
+    by: ['status'],
+    _count: {
+      status: true,
+    },
+  });
+
+  statusCounts.forEach((status) => {
+    console.log(`${status.status}: ${status._count.status} books`);
+  });
+
+  console.log('\n--- Location Status Summary ---');
+  const locationStatusCounts = await prisma.location.groupBy({
+    by: ['status'],
+    _count: {
+      status: true,
+    },
+  });
+
+  locationStatusCounts.forEach((status) => {
+    console.log(`${status.status}: ${status._count.status} locations`);
+  });
 }
 
 main()

@@ -12,6 +12,11 @@ import {
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import {
+  ChangeBookStatusDto,
+  StatusOperationDto,
+} from '../common/dto/status.dto';
+import { BookStatus } from '@prisma/client';
 
 @Controller('books')
 export class BooksController {
@@ -28,17 +33,38 @@ export class BooksController {
     @Query('genreId', new ParseIntPipe({ optional: true })) genreId?: number,
     @Query('locationId', new ParseIntPipe({ optional: true }))
     locationId?: number,
+    @Query('includeRetired') includeRetired?: string,
+    @Query('status') status?: BookStatus,
   ) {
+    const includeRetiredFlag = includeRetired === 'true';
+
+    // Filter by status
+    if (status) {
+      return this.booksService.findByStatus(status);
+    }
+
+    // Filter by relations
     if (authorId) {
-      return this.booksService.findByAuthor(authorId);
+      return this.booksService.findByAuthor(authorId, includeRetiredFlag);
     }
     if (genreId) {
-      return this.booksService.findByGenre(genreId);
+      return this.booksService.findByGenre(genreId, includeRetiredFlag);
     }
     if (locationId) {
-      return this.booksService.findByLocation(locationId);
+      return this.booksService.findByLocation(locationId, includeRetiredFlag);
     }
-    return this.booksService.findAll();
+
+    return this.booksService.findAll(includeRetiredFlag);
+  }
+
+  @Get('available')
+  findAvailable() {
+    return this.booksService.findAvailable();
+  }
+
+  @Get('checked-out')
+  findCheckedOut() {
+    return this.booksService.findCheckedOut();
   }
 
   @Get(':id')
@@ -54,12 +80,62 @@ export class BooksController {
     return this.booksService.update(id, updateBookDto);
   }
 
+  // Status management endpoints
+  @Patch(':id/status')
+  changeStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() changeStatusDto: ChangeBookStatusDto,
+  ) {
+    return this.booksService.changeStatus(id, changeStatusDto);
+  }
+
+  @Patch(':id/check-out')
+  checkOut(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusDto: StatusOperationDto,
+  ) {
+    return this.booksService.checkOut(id, statusDto.reason);
+  }
+
+  @Patch(':id/check-in')
+  checkIn(@Param('id', ParseIntPipe) id: number) {
+    return this.booksService.checkIn(id);
+  }
+
+  @Patch(':id/mark-lost')
+  markAsLost(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusDto: StatusOperationDto,
+  ) {
+    return this.booksService.markAsLost(id, statusDto.reason);
+  }
+
+  @Patch(':id/mark-damaged')
+  markAsDamaged(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusDto: StatusOperationDto,
+  ) {
+    return this.booksService.markAsDamaged(id, statusDto.reason);
+  }
+
+  @Patch(':id/send-to-repair')
+  sendToRepair(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusDto: StatusOperationDto,
+  ) {
+    return this.booksService.sendToRepair(id, statusDto.reason);
+  }
+
+  @Patch(':id/move-to-storage')
+  moveToStorage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusDto: StatusOperationDto,
+  ) {
+    return this.booksService.moveToStorage(id, statusDto.reason);
+  }
+
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
-    return this.booksService.remove(id);
+    return this.booksService.remove(id); // This retires the book
   }
-  //   @Get('author/:authorId')
-  //   findByAuthor(@Param('authorId', ParseIntPipe) authorId: number) {
-  //     return this.booksService.findByAuthor(authorId);
-  //   }
 }

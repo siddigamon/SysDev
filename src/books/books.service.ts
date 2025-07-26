@@ -3,7 +3,8 @@ import { BaseService } from '../common/base.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
-import { Book } from '@prisma/client';
+import { ChangeBookStatusDto } from '../common/dto/status.dto';
+import { Book, BookStatus } from '@prisma/client';
 
 @Injectable()
 export class BooksService extends BaseService<
@@ -40,18 +41,44 @@ export class BooksService extends BaseService<
     }, 'create');
   }
 
-  async findAll() {
+  async findAll(includeRetired = false) {
     return this.executeWithErrorHandling(
       () =>
         this.prisma.book.findMany({
+          where: includeRetired ? {} : this.getActiveBookFilter(),
           include: {
             author: true,
             location: true,
             bookGenres: { include: { genre: true } },
           },
+          orderBy: { title: 'asc' },
         }),
       'retrieve',
     );
+  }
+
+  async findByStatus(status: BookStatus) {
+    return this.executeWithErrorHandling(
+      () =>
+        this.prisma.book.findMany({
+          where: { status },
+          include: {
+            author: true,
+            location: true,
+            bookGenres: { include: { genre: true } },
+          },
+          orderBy: { title: 'asc' },
+        }),
+      'find by status',
+    );
+  }
+
+  async findAvailable() {
+    return this.findByStatus(BookStatus.AVAILABLE);
+  }
+
+  async findCheckedOut() {
+    return this.findByStatus(BookStatus.CHECKED_OUT);
   }
 
   async findOne(id: number) {
@@ -77,7 +104,82 @@ export class BooksService extends BaseService<
     );
   }
 
-  async findByAuthor(authorId: number) {
+  // Status Management Methods
+  async changeStatus(id: number, changeStatusDto: ChangeBookStatusDto) {
+    return this.executeWithErrorHandling(
+      async () => {
+        await this.findOne(id);
+        return this.prisma.book.update({
+          where: { id },
+          data: {
+            status: changeStatusDto.status,
+            statusReason: changeStatusDto.reason,
+            statusDate: new Date(),
+          },
+          include: {
+            author: true,
+            location: true,
+            bookGenres: { include: { genre: true } },
+          },
+        });
+      },
+      'change status',
+      id,
+    );
+  }
+
+  // Convenient status change methods
+  async checkOut(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.CHECKED_OUT,
+      reason: reason || 'Book checked out',
+    });
+  }
+
+  async checkIn(id: number) {
+    return this.changeStatus(id, {
+      status: BookStatus.AVAILABLE,
+      reason: 'Book returned and available',
+    });
+  }
+
+  async markAsLost(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.LOST,
+      reason: reason || 'Marked as lost',
+    });
+  }
+
+  async markAsDamaged(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.DAMAGED,
+      reason: reason || 'Marked as damaged',
+    });
+  }
+
+  async sendToRepair(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.IN_REPAIR,
+      reason: reason || 'Sent for repair',
+    });
+  }
+
+  async moveToStorage(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.STORAGE,
+      reason: reason || 'Moved to storage',
+    });
+  }
+
+  async retire(id: number, reason?: string) {
+    return this.changeStatus(id, {
+      status: BookStatus.RETIRED,
+      reason: reason || 'Book retired',
+    });
+  }
+
+  // Filtering methods with status awareness
+  async findByAuthor(authorId: number, includeRetired = false) {
     return this.executeWithErrorHandling(
       async () => {
         const authorExists = await this.prisma.author.findUnique({
@@ -89,7 +191,10 @@ export class BooksService extends BaseService<
         }
 
         return this.prisma.book.findMany({
-          where: { authorId },
+          where: {
+            authorId,
+            ...(includeRetired ? {} : this.getActiveBookFilter()),
+          },
           include: {
             author: true,
             location: true,
@@ -103,7 +208,7 @@ export class BooksService extends BaseService<
     );
   }
 
-  async findByGenre(genreId: number) {
+  async findByGenre(genreId: number, includeRetired = false) {
     return this.executeWithErrorHandling(
       async () => {
         const genreExists = await this.prisma.genre.findUnique({
@@ -117,6 +222,7 @@ export class BooksService extends BaseService<
         return this.prisma.book.findMany({
           where: {
             bookGenres: { some: { genreId } },
+            ...(includeRetired ? {} : this.getActiveBookFilter()),
           },
           include: {
             author: true,
@@ -131,7 +237,7 @@ export class BooksService extends BaseService<
     );
   }
 
-  async findByLocation(locationId: number) {
+  async findByLocation(locationId: number, includeRetired = false) {
     return this.executeWithErrorHandling(
       async () => {
         const locationExists = await this.prisma.location.findUnique({
@@ -145,7 +251,10 @@ export class BooksService extends BaseService<
         }
 
         return this.prisma.book.findMany({
-          where: { locationId },
+          where: {
+            locationId,
+            ...(includeRetired ? {} : this.getActiveBookFilter()),
+          },
           include: {
             author: true,
             location: true,
@@ -159,6 +268,10 @@ export class BooksService extends BaseService<
     );
   }
 
+  /**
+   * Updates book metadata, location, and genre associations
+   * Does NOT change book status - use status-specific methods for that
+   */
   async update(id: number, updateBookDto: UpdateBookDto) {
     return this.executeWithErrorHandling(
       async () => {
@@ -216,16 +329,8 @@ export class BooksService extends BaseService<
     );
   }
 
+  // "Delete" now means retire
   async remove(id: number) {
-    return this.executeWithErrorHandling(
-      async () => {
-        await this.findOne(id);
-        return this.prisma.book.delete({
-          where: { id },
-        });
-      },
-      'delete',
-      id,
-    );
+    return this.retire(id, 'Book retired via DELETE API');
   }
 }

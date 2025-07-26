@@ -13,6 +13,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum BookStatus {
+  AVAILABLE
+  CHECKED_OUT
+  LOST
+  DAMAGED
+  RETIRED
+  IN_REPAIR
+  STORAGE
+}
+
+enum LocationStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model Author {
   id        Int      @id @default(autoincrement())
   firstName  String
@@ -31,28 +46,32 @@ model Genre {
 }
 
 model Location {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique
+  id          Int            @id @default(autoincrement())
+  name        String         @unique
   floor       Int?
   section     String?
   description String?
-  books       Book[]  
+  books       Book[]
+  status      LocationStatus @default(ACTIVE)
 }
 
 model Book {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   title        String
   authorId     Int
-  author       Author   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author       Author     @relation(fields: [authorId], references: [id], onDelete: Restrict)
   locationId   Int?
-  location     Location?   @relation(fields: [locationId], references: [id], onDelete: Restrict)
-    bookGenres   BookGenre[]
+  location     Location?  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  bookGenres   BookGenre[]
   publishedAt  DateTime 
   reprintDate  DateTime? 
   edition      String?   
   publisher    String?
-  isbn         String?   @unique
+  isbn         String?    @unique
   pageCount    Int?
+  status       BookStatus @default(AVAILABLE)
+  statusReason String?
+  statusDate   DateTime   @default(now())
   
   @@unique([title, authorId, edition, publisher])
 }

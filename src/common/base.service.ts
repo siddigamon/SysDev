@@ -31,20 +31,19 @@ export abstract class BaseService<TModel, TCreateDto, TUpdateDto> {
             `${this.modelName} with this information already exists`,
           );
         case 'P2003': {
-          // More specific P2003 handling based on model
           let message: string;
           switch (this.modelName) {
             case 'Author':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books!`;
+              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please remove books first.`;
               break;
             case 'Genre':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books!`;
+              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please remove book-genre associations first.`;
               break;
             case 'Location':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books!`;
+              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please move books to another location or set location as inactive.`;
               break;
             default:
-              message = 'Invalid reference ID provided';
+              message = 'Cannot delete record with existing references';
           }
           throw new ConflictException(message);
         }
@@ -76,5 +75,13 @@ export abstract class BaseService<TModel, TCreateDto, TUpdateDto> {
     } catch (error) {
       this.handlePrismaError(error, operationName, id);
     }
+  }
+
+  protected getActiveBookFilter() {
+    return { status: { not: 'RETIRED' as any } };
+  }
+
+  protected getActiveLocationFilter() {
+    return { status: 'ACTIVE' as any };
   }
 }
