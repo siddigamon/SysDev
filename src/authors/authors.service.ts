@@ -1,51 +1,99 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { BaseService } from '../common/base.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
+import { Author } from '@prisma/client';
+
 @Injectable()
-export class AuthorsService {
-  constructor(private prisma: PrismaService) {}
+export class AuthorsService extends BaseService<
+  Author,
+  CreateAuthorDto,
+  UpdateAuthorDto
+> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'Author');
+  }
 
   async create(createAuthorDto: CreateAuthorDto) {
-    return this.prisma.author.create({
-      data: createAuthorDto,
-    });
+    return this.executeWithErrorHandling(
+      () =>
+        this.prisma.author.create({
+          data: createAuthorDto,
+          include: { books: true },
+        }),
+      'create',
+    );
   }
 
   async findAll() {
-    return this.prisma.author.findMany({
-      include: { books: true },
-    });
+    return this.executeWithErrorHandling(
+      () =>
+        this.prisma.author.findMany({
+          include: { books: true },
+        }),
+      'retrieve',
+    );
   }
 
   async findOne(id: number) {
-    const author = await this.prisma.author.findUnique({
-      where: { id },
-      include: { books: true },
-    });
+    return this.executeWithErrorHandling(
+      async () => {
+        const author = await this.prisma.author.findUnique({
+          where: { id },
+          include: { books: true },
+        });
 
-    if (!author) {
-      throw new NotFoundException(`Author with ID ${id} not found`);
-    }
+        if (!author) {
+          throw new NotFoundException(`Author with ID ${id} not found`);
+        }
 
-    return author;
+        return author;
+      },
+      'find',
+      id,
+    );
   }
 
   async update(id: number, updateAuthorDto: UpdateAuthorDto) {
-    await this.findOne(id);
-
-    return this.prisma.author.update({
-      where: { id },
-      data: updateAuthorDto,
-      include: { books: true },
-    });
+    return this.executeWithErrorHandling(
+      async () => {
+        await this.findOne(id);
+        return this.prisma.author.update({
+          where: { id },
+          data: updateAuthorDto,
+          include: { books: true },
+        });
+      },
+      'update',
+      id,
+    );
   }
 
   async remove(id: number) {
-    await this.findOne(id);
+    return this.executeWithErrorHandling(
+      async () => {
+        await this.findOne(id);
 
-    return this.prisma.author.delete({
-      where: { id },
-    });
+        const bookCount = await this.prisma.book.count({
+          where: { authorId: id },
+        });
+
+        if (bookCount > 0) {
+          throw new ConflictException(
+            `Cannot delete author with ${bookCount} books. Authors with published works cannot be removed to maintain catalog integrity.`,
+          );
+        }
+
+        // Only allow deletion if author has no books
+        return this.prisma.author.delete({ where: { id } });
+      },
+      'delete',
+      id,
+    );
   }
 }
