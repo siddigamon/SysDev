@@ -112,7 +112,6 @@ export class BooksService extends BaseService<
     );
   }
 
-  // Status Management Methods
   async changeStatus(id: number, changeStatusDto: ChangeBookStatusDto) {
     return this.executeWithErrorHandling(
       async () => {
@@ -136,7 +135,6 @@ export class BooksService extends BaseService<
     );
   }
 
-  // Convenient status change methods
   async checkOut(id: number, reason?: string) {
     return this.changeStatus(id, {
       status: BookStatus.CHECKED_OUT,
@@ -186,7 +184,6 @@ export class BooksService extends BaseService<
     });
   }
 
-  // Filtering methods with status awareness
   async findByAuthor(authorId: number, includeRetired = false) {
     return this.executeWithErrorHandling(
       async () => {
@@ -276,10 +273,6 @@ export class BooksService extends BaseService<
     );
   }
 
-  /**
-   * Updates book metadata, location, and genre associations
-   * Does NOT change book status - use status-specific methods for that
-   */
   async update(id: number, updateBookDto: UpdateBookDto) {
     return this.executeWithErrorHandling(
       async () => {
@@ -363,7 +356,6 @@ export class BooksService extends BaseService<
         whereClause.status = { not: 'RETIRED' };
       }
 
-      // Validate referenced entities exist (only if provided)
       if (filters.authorId) {
         const authorExists = await this.prisma.author.findUnique({
           where: { id: filters.authorId },

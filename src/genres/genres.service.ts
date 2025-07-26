@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BaseService } from '../common/base.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGenreDto } from './dto/create-genre.dto';
@@ -94,9 +98,18 @@ export class GenresService extends BaseService<
     return this.executeWithErrorHandling(
       async () => {
         await this.findOne(id);
-        return this.prisma.genre.delete({
-          where: { id },
+
+        const associationCount = await this.prisma.bookGenre.count({
+          where: { genreId: id },
         });
+
+        if (associationCount > 0) {
+          throw new ConflictException(
+            `Cannot delete genre with ${associationCount} book associations. Remove all book-genre relationships first.`,
+          );
+        }
+
+        return this.prisma.genre.delete({ where: { id } });
       },
       'delete',
       id,

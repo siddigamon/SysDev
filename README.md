@@ -175,19 +175,44 @@ GET /books?authorId=3&includeRetired=true
 GET /books?genreId=4&status=CHECKED_OUT
 ```
 
+### Real-World Scenarios
+
+**Morning library routine:**
+
+```bash
+GET /books?status=DAMAGED         # Books needing attention
+GET /books?status=LOST           # Books to investigate
+GET /books?status=IN_REPAIR      # Books expected back from repair
+```
+
+**Patron assistance:**
+
+```bash
+GET /books?authorId=3&status=AVAILABLE      # Available Stephen King books
+GET /books?genreId=1&locationId=2           # Fantasy books in specific section
+```
+
+**Inventory management:**
+
+```bash
+GET /books?locationId=1&includeRetired=false   # Active books in Fiction Section A
+GET /locations?status=INACTIVE                 # Sections temporarily closed
+```
+
 ### Database Structure
 
 - Authors can have many books
 - Books belong to one author and one location
-- Books can have multiple genres (many-to-many)
-- Everything uses proper foreign keys
+- Books can have multiple genres (many-to-many relationship)
+- Everything uses proper foreign keys for data integrity
 
 ### Key Features
 
 - **Soft deletes**: Books get "retired", locations get "deactivated"
 - **Status tracking**: Every status change includes reason and timestamp
 - **Combined filtering**: Mix and match any query parameters
-- **Validation**: Checks that referenced authors/genres/locations exist
+- **Entity validation**: Checks that referenced authors/genres/locations exist
+- **Referential integrity**: Can't delete authors/genres that have associated books
 
 ## Sample Data
 
@@ -196,7 +221,7 @@ Run `npm run db:seed` to get:
 - 4 authors (Rowling, Orwell, King, Christie)
 - 4 genres (Fantasy, Dystopian, Horror, Mystery)
 - 5 locations (different sections)
-- 8 books with various statuses
+- 8 books with various statuses for testing
 
 ## Development Commands
 
@@ -219,24 +244,40 @@ npm run lint               # Check code style
   "title": "1984",
   "status": "AVAILABLE",
   "statusReason": "Available for checkout",
+  "statusDate": "2024-01-26T10:30:00.000Z",
   "author": {
     "firstName": "George",
     "lastName": "Orwell"
   },
   "location": {
-    "name": "Fiction Section A"
+    "name": "Fiction Section A",
+    "status": "ACTIVE"
   },
   "bookGenres": [
     {
       "genre": {
-        "name": "Dystopian"
+        "name": "Dystopian",
+        "description": "Dystopian fiction"
       }
     }
   ]
 }
 ```
 
-**Error:**
+**Validation Error:**
+
+```json
+{
+  "message": [
+    "Book title must be a valid text string",
+    "Every book needs a title - please provide one"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+**Not Found Error:**
 
 ```json
 {
@@ -246,13 +287,18 @@ npm run lint               # Check code style
 }
 ```
 
-## Status Codes
+**Referential Integrity Error:**
 
-- `200` - Success
-- `201` - Created
-- `400` - Bad request (validation failed)
-- `404` - Not found
-- `409` - Conflict (duplicate or can't delete)
-- `500` - Server error
+```json
+{
+  "message": "Cannot delete author with 5 books. Authors with published works cannot be removed to maintain catalog integrity.",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
 
----
+**Data Integrity:**
+
+- Soft deletes preserve historical data
+- Foreign key constraints prevent orphaned records
+- Unique constraints prevent

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BaseService } from '../common/base.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuthorDto } from './dto/create-author.dto';
@@ -74,9 +78,19 @@ export class AuthorsService extends BaseService<
     return this.executeWithErrorHandling(
       async () => {
         await this.findOne(id);
-        return this.prisma.author.delete({
-          where: { id },
+
+        const bookCount = await this.prisma.book.count({
+          where: { authorId: id },
         });
+
+        if (bookCount > 0) {
+          throw new ConflictException(
+            `Cannot delete author with ${bookCount} books. Authors with published works cannot be removed to maintain catalog integrity.`,
+          );
+        }
+
+        // Only allow deletion if author has no books
+        return this.prisma.author.delete({ where: { id } });
       },
       'delete',
       id,

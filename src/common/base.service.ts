@@ -30,39 +30,23 @@ export abstract class BaseService<TModel, TCreateDto, TUpdateDto> {
           throw new ConflictException(
             `${this.modelName} with this information already exists`,
           );
-        case 'P2003': {
-          let message: string;
-          switch (this.modelName) {
-            case 'Author':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please remove books first.`;
-              break;
-            case 'Genre':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please remove book-genre associations first.`;
-              break;
-            case 'Location':
-              message = `Cannot delete ${this.modelName.toLowerCase()} with associated books. Please move books to another location or set location as inactive.`;
-              break;
-            default:
-              message = 'Cannot delete record with existing references';
-          }
-          throw new ConflictException(message);
-        }
+
         case 'P2025':
           throw new NotFoundException(
             id
               ? `${this.modelName} with ID ${id} not found`
               : `${this.modelName} not found`,
           );
+
         default:
           throw new InternalServerErrorException('Database error occurred');
       }
     }
 
-    const errorMessage = id
-      ? `Failed to ${operation} ${this.modelName.toLowerCase()} with ID ${id}`
-      : `Failed to ${operation} ${this.modelName.toLowerCase()}`;
-
-    throw new BadRequestException(errorMessage);
+    // Generic fallback
+    throw new BadRequestException(
+      `Failed to ${operation} ${this.modelName.toLowerCase()}`,
+    );
   }
 
   protected async executeWithErrorHandling<T>(
@@ -73,6 +57,16 @@ export abstract class BaseService<TModel, TCreateDto, TUpdateDto> {
     try {
       return await operation();
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      // Handle Prisma errors
       this.handlePrismaError(error, operationName, id);
     }
   }
