@@ -43,9 +43,9 @@ model Book {
   id           Int      @id @default(autoincrement())
   title        String
   authorId     Int
-  author       Author   @relation(fields: [authorId], references: [id])
+  author       Author   @relation(fields: [authorId], references: [id], onDelete: Restrict)
   locationId   Int?
-  location     Location?   @relation(fields: [locationId], references: [id])
+  location     Location?   @relation(fields: [locationId], references: [id], onDelete: Restrict)
     bookGenres   BookGenre[]
   publishedAt  DateTime 
   reprintDate  DateTime? 
@@ -62,7 +62,7 @@ model BookGenre {
   bookId  Int
   genreId Int
   book    Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Restrict)
   
   @@unique([bookId, genreId]) 
 }
